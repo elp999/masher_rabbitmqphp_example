@@ -32,7 +32,7 @@ function doLogin($uname, $passwd, $sesStart) {
             $insertStmt = $mysqli->prepare($insertSql);
             $insertStmt->bind_param("iii", $userID, $sesStart, $exp_date);
             $insertStmt->execute();
-            return array("returnCode" => '1', 'message' => "Login Successful");
+            return array("returnCode" => '1', 'user_id' => $userID);
         } else {
             return array("returnCode" => '0', 'message' => "Invalid input");
         }
@@ -203,9 +203,9 @@ function doLogout($userID)
 {
 
 	$mysqli = require __DIR__ . "/database.php";
-	$sql = "DELETE FROM sessions WHERE user_id = :userID";
+	$sql = "DELETE FROM sessions WHERE user_id = ?";
 	$stmt = $mysqli->prepare($sql);
-	$stmt->bind_param(':userID', $userID, PDO::PARAM_INT);
+	$stmt->bind_param('i', $userID);
 
         if ($stmt->execute()) {
             return array("returnCode" => "1", "message" => 'delete worked');
