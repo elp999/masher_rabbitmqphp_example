@@ -32,7 +32,7 @@ function doLogin($uname, $passwd, $sesStart) {
             $insertStmt = $mysqli->prepare($insertSql);
             $insertStmt->bind_param("iii", $userID, $sesStart, $exp_date);
             $insertStmt->execute();
-            return array("returnCode" => '1', 'message' => "Login Successful");
+            return array("returnCode" => '1', 'user_id' => $userID);
         } else {
             return array("returnCode" => '0', 'message' => "Invalid input");
         }
@@ -123,7 +123,7 @@ function doPlayers($APIplayers)
 	 }
 	
 	foreach ($APIplayers as $player) {
-		$stmt->bind_param("siss", $player['player_name'], $player['player_id_api'], $player['player_position'], $player['team_name']);
+		$stmt->bind_param("siss", $player['player_name'], $player['player_id_api'], $player['player_position'], 					  $player['team_name']);
 	if (!$stmt->execute()) {
               return array("returnCode" => "0", "message" => 'Statement execution failed');
              }
@@ -152,25 +152,36 @@ function doTeams($APIdata)
 	return array("returnCode" => "1", "message" => 'Statement execution success');
 }
 
-function doValidate($sessionData, $sesStart)
+function doValidate($userID)
 {
 
-$mysqli = require __DIR__ . "/database.php";
-$sql = "INSERT INTO sessions (session_data, session_start)
-	VALUES (?, ?)";
+	$mysqli = require __DIR__ . "/database.php";
+	$sql = "SELECT * FROM sessions WHERE user_id = ?";
 
-$stmt = $mysqli->stmt_init();
-   if (!$stmt->prepare($sql)) {
-      return array("returnCode" => "0", "message" => 'statement prepare error');
-   }
-$stmt->bind_param("si", $sessionData, $sesStart);
-if ($stmt->execute()) {
-      return array ("returnCode" => "1", "message" => 'success');
-   } else {
-       return array("returnCode" => "0", "message" => 'statement execution failed');
-   }
+	$stmt = $mysqli->prepare($sql);
+	if (!$stmt) {
+    	    return array("returnCode" => "0", "message" => "Statement prepare error");
+	}
 
+	$stmt->bind_param("i", $userID); 
+	if (!$stmt->execute()) {
+    	    return array("returnCode" => "0", "message" => "Statement execution failed");
+	}
+
+	$result = $stmt->get_result();
+    	   if ($row = $result->fetch_assoc()) {
+               $currentEpoch = time();
+               if ($currentEpoch >= $row['session_start'] && $currentEpoch <= $row['session_expire']) {
+            	   return array("returnCode" => "1", "message" => "Session is valid");
+	     } else {
+	           doLogout($userID);
+                   return array("returnCode" => "0", "message" => "Session has expired or is not started yet");
+        	}
+    	 } else {
+               return array("returnCode" => "0", "message" => "No session found for user");
+  	  }
 }
+
 
 function getTeams()
 {
@@ -210,6 +221,28 @@ function getPlayers()
         return json_encode($teams);
 }
 
+function doLogout($userID)
+{
+
+	$mysqli = require __DIR__ . "/database.php";
+	$sql = "DELETE FROM sessions WHERE user_id = ?";
+	$stmt = $mysqli->prepare($sql);
+	$stmt->bind_param('i', $userID);
+
+        if ($stmt->execute()) {
+            return array("returnCode" => "1", "message" => 'delete worked');
+        } else {
+	    return array("returnCode" => "0", "message" => 'delete failed');
+	}
+}
+
+
+function createTeam($name)
+{
+
+	$mysqli = require __DIR__ . "/database.php";
+	$sql = "INSERT INTO teams (team_name) VALUES (?)";
+}
 
 function requestProcessor($request)
 {
@@ -224,7 +257,7 @@ function requestProcessor($request)
     case "login":
       return doLogin($request['username'],$request['password'], $request['session']);
     case "validate_session":
-	    return doValidate($request['session_data'], $request['session_start']);
+	    return doValidate($request['user_id']);
     case "register":
       return doRegister($request['f_name'], $request['l_name'], $request['email'], 
 	                $request['username'], $request['password']);
@@ -236,6 +269,10 @@ function requestProcessor($request)
 	    return getTeams();
     case "SelectPlayers":
 	    return getPlayers();
+    case "logout":
+	    return doLogout($request['user_id']);
+    case "create_team"
+	    return createTeam($request['team_name']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
