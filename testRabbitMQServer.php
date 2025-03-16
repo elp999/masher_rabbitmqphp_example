@@ -3,7 +3,6 @@
 require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
-
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Dotenv\Dotenv;
@@ -42,21 +41,32 @@ function doLogin($uname, $passwd, $sesStart) {
 }
 
 function do twoFactor($rand_num){
-	$rand = rand(100000,999999)
+	$rand = rand(100000,999999);
 	$mysqli = require __DIR__ . "/database.php";
-	$sql = "INSERT INTO 2fa (rand_num) VALUES (".$rand.")";
-	$stmt1 = $mysql->stmt_init();
+	$sql = "INSERT INTO 2fa (rand_num) VALUES (?)";
+	$stmt1 = $mysqli->stmt_init();
 	if ($stmt1->prepare($sql)){
-		$stmt1->bind_param("i", $rand_num);
+		$stmt1->bind_param("i", $rand);
 		$stmt1->execute();
+		if (!$stmt1->prepare($sql)){
+			return array("returncode" => "0", "message" => 'Sql insertion error');
+		}
 	}
-    	$sql = "SELECT rand_num, FROM 2fa WHERE num_id = ?";
-   	$stmt = $mysqli->prepare($sql);
-    	$stmt->bind_param("i", $randcode);
-    	$stmt->execute();
-    	$result = $stmt->get_result();
-
-	if ($user = $result->fetch_a
+    	$sql = "SELECT rand_num FROM 2fa WHERE num_id = ?";
+   	$stmt2 = $mysqli->prepare($sql);
+    	$stmt2->bind_param("i", $rand_num);
+    	$stmt2->execute();
+    	$result = $stmt2->get_result();
+	if(!$result){
+		return array("returncode" => "0", "message" => 'Error fetching result.');
+	}
+	if ($tfa = $result->fetch_assoc()){
+		$righttfa = $tfa['rand_num'];
+		return array("returncode" => "1", "message" => 'User matched random number');
+	} else {	
+		return array("returncode" => "0", "message" => 'Did not match random number');
+	}
+}
 
 
 function doRegister($fname, $lname, $email, $uname, $passwd)
