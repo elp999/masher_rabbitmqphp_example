@@ -13,6 +13,29 @@ require 'vendor/autoload.php';
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
+function sendEmail($email, $fname)
+{
+	$mail = new PHPMailer(true);
+           try {
+                   $mail->isSMTP();
+                   $mail->Host       = $_ENV['SMTP_HOST'];
+                   $mail->SMTPAuth   = true;
+                   $mail->Username   = $_ENV['SMTP_USER'];
+                   $mail->Password   = $_ENV['SMTP_PASS'];
+                   $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                   $mail->Port       = $_ENV['SMTP_PORT'];
+                   $mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);
+                   $mail->addAddress($email, $fname);
+                   $mail->isHTML(true);
+                   $mail->Subject = 'Test Email';
+                   $mail->Body    = '<h1>Hello!</h1>                               
+                           <p>registration success</p>';
+                   $mail->send();
+                   echo 'Email sent successfully!';
+           } catch (Exception $e) {
+                   echo "Error: {$mail->ErrorInfo}";
+           }
+}
 
 function doLogin($uname, $passwd, $sesStart) {
     $mysqli = require __DIR__ . "/database.php";
@@ -41,30 +64,31 @@ function doLogin($uname, $passwd, $sesStart) {
     }
 }
 
-function do twoFactor($rand_num){
-	$rand = rand(100000,999999)
+function doTwoFactor($numID, $userCode, $randCode)
+{
 	$mysqli = require __DIR__ . "/database.php";
-	$sql = "INSERT INTO 2fa (rand_num) VALUES (".$rand.")";
-	$stmt1 = $mysql->stmt_init();
-	if ($stmt1->prepare($sql)){
-		$stmt1->bind_param("i", $rand_num);
-		$stmt1->execute();
+	
+	$sql = "INSERT INTO 2fa (rand_num) VALUES (?)";
+	$stmt = $mysqli->stmt_init();
+	if (!$stmt->prepare($sql)){
+            return array("returnCode" => "0", "message" => "stmt prepare issue");
+        }
+	$stmt->bind_param("i", $rand_num);
+	if ($stmt->execute()){
+	    $sql1 = "SELECT rand_num FROM 2fa WHERE num_id = ?";
+	    $stmt1 = $mysqli->stmt_init();
+            if (!$stmt1->prepare($sql1)){
+                return array("returnCode" => "0", "message" => "stmt prepare issue");
+	    } else {
+	    	 
+	    }
 	}
-    	$sql = "SELECT rand_num, FROM 2fa WHERE num_id = ?";
-   	$stmt = $mysqli->prepare($sql);
-    	$stmt->bind_param("i", $randcode);
-    	$stmt->execute();
-    	$result = $stmt->get_result();
-
-	if ($user = $result->fetch_a
-
+}
 
 function doRegister($fname, $lname, $email, $uname, $passwd)
 {
    $passhash = password_hash($passwd, PASSWORD_DEFAULT);	
    $mysqli = require __DIR__ . "/database.php";
-
-
 
    $sql = "SELECT username FROM user_login WHERE username = ?";
    $stmt1 = $mysqli->stmt_init();
@@ -74,11 +98,11 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
 	   $stmt1->store_result();
 
 	   if ($stmt1->num_rows > 0){
-		   return array("returncode" => "0", "message" => 'Username exists');
-	   }
+	       return array("returncode" => "0", "message" => 'Username exists');
+	     }
    } else {		   
-	   return array("returncode" => "0", "message" => 'Error preparing statement.');
-   }
+	return array("returncode" => "0", "message" => 'Error preparing statement.');
+     }
    $sql = "INSERT INTO user_login (f_name, l_name, email, username, password, created_at)
 		   VALUES (?, ?, ?, ?, ?, ?)";	   
    $stmt = $mysqli->stmt_init();	   
@@ -88,26 +112,7 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
    $d = time();	   
    $stmt->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
    if ($stmt->execute()) {		   
-	   $mail = new PHPMailer(true);	   
-	   try {			  
-		   $mail->isSMTP();    			   
-		   $mail->Host       = $_ENV['SMTP_HOST'];    			   
-		   $mail->SMTPAuth   = true; 		       	   
-		   $mail->Username   = $_ENV['SMTP_USER'];    			   
-		   $mail->Password   = $_ENV['SMTP_PASS'];    			   
-		   $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    			   
-		   $mail->Port       = $_ENV['SMTP_PORT'];    			   
-		   $mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);    			   
-		   $mail->addAddress($email, $fname);    			   
-		   $mail->isHTML(true);    	 		   
-		   $mail->Subject = 'Test Email';			   
-		   $mail->Body    = '<h1>Hello!</h1>				   
-			   <p>registration success</p>';			   
-		   $mail->send();			   
-		   echo 'Email sent successfully!';		   
-	   } catch (Exception $e) {			   
-		   echo "Error: {$mail->ErrorInfo}";		   
-	   }		   
+	   sendEmail($email, $fname);		   
 	   return array ("returnCode" => "1", "message" => 'success');	   
    } else {		   
 	   if ($mysqli->errno === 1062) {			   
@@ -243,11 +248,24 @@ function doLogout($userID)
 }
 
 
-function createTeam($name)
+function createTeam($userID, $name)
 {
 
 	$mysqli = require __DIR__ . "/database.php";
-	$sql = "INSERT INTO teams (team_name) VALUES (?)";
+	$sql = "INSERT INTO teams (user_id, team_name) VALUES (?, ?)";
+
+	$stmt = $mysqli->stmt_init();
+
+	if (!$stmt->prepare($sql)) {
+	    return array("returnCode" => "0", "message" => 'stmt error');
+	}
+
+	$stmt->bind_param("is", $userID, $name);
+	if ($stmt->execute()) {
+	    return array("returnCode" => "1");
+	} else {
+	    return array("returnCode" => "0");
+        }	    
 }
 
 function requestProcessor($request)
@@ -278,7 +296,9 @@ function requestProcessor($request)
     case "logout":
 	    return doLogout($request['user_id']);
     case "create_team":
-	    return createTeam($request['team_name']);
+	    return createTeam($request['user_id'], $request['team_name']);
+    case "twoFA":
+	    return doTwoFactor($request['num_id'], $request['userCode'], $request['randCode']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
