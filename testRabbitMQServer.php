@@ -40,11 +40,17 @@ function doLogin($uname, $passwd, $sesStart) {
         return array("returnCode" => '0', 'message' => "Invalid username");
     }
 }
-/*
-function do twoFactor($randcode){
-	$mysqli = require __DIR__ . "/database.php";
 
-    	$sql = "SELECT rand_numb, FROM 2fa WHERE username = ?";
+function do twoFactor($rand_num){
+	$rand = rand(100000,999999)
+	$mysqli = require __DIR__ . "/database.php";
+	$sql = "INSERT INTO 2fa (rand_num) VALUES (".$rand.")";
+	$stmt1 = $mysql->stmt_init();
+	if ($stmt1->prepare($sql)){
+		$stmt1->bind_param("i", $rand_num);
+		$stmt1->execute();
+	}
+    	$sql = "SELECT rand_num, FROM 2fa WHERE num_id = ?";
    	$stmt = $mysqli->prepare($sql);
     	$stmt->bind_param("i", $randcode);
     	$stmt->execute();
@@ -52,7 +58,7 @@ function do twoFactor($randcode){
 
 	if ($user = $result->fetch_a
 
-*/
+
 function doRegister($fname, $lname, $email, $uname, $passwd)
 {
    $passhash = password_hash($passwd, PASSWORD_DEFAULT);	
@@ -271,7 +277,7 @@ function requestProcessor($request)
 	    return getPlayers();
     case "logout":
 	    return doLogout($request['user_id']);
-    case "create_team"
+    case "create_team":
 	    return createTeam($request['team_name']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
