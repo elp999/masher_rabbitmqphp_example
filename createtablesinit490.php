@@ -3,11 +3,18 @@
 
 $db1 = 'mysql';
 $db2 = 'it490';
-$mydb = new mysqli('192.168.192.71','bobby','bobby','mysql');
+require __DIR__ . "/database.php";
+$t_api_table = 'api_teams';
+$p_api_table = 'api_players';
+$u_log = 'user_login';
+$sesh = 'sessions';
+$l_nme = 'league_name';
+$u_tem = 'user_teams';
+$t_ply = 'team_players';
 
-if ($mydb->errno != 0)
+if ($mysqli->errno != 0)
 {
-        echo "failed to connect to database: ". $mydb->error . PHP_EOL;
+        echo "failed to connect to database: ". $mysqli->error . PHP_EOL;
         exit(0);
 }
 
@@ -15,8 +22,8 @@ echo "successfully connected to database: ".$db1.PHP_EOL;
 
 $checkuser = 'bobby';
 
-$query1 = "select user from user where user = ?";
-$stmt = $mydb->prepare($query1);
+$query1 = "select user from mysql.user where user = ?";
+$stmt = $mysqli->prepare($query1);
 $stmt->bind_param("s", $checkuser);
 $stmt->execute();
 $stmt->store_result();
@@ -27,20 +34,16 @@ if ($stmt->num_rows > 0) {
         echo "User does not exist\n";
 }
 
-$mydb->close();
-
-$mydb = new mysqli('127.0.0.1','bobby','12345','it490');
-
-if ($mydb->errno != 0)
+if ($mysqli->errno != 0)
 {
-        echo "failed to connect to database: ". $mydb->error . PHP_EOL;
+        echo "failed to connect to database: ". $mysqli->error . PHP_EOL;
         exit(0);
 }
 
 echo "successfully connected to database: ".$db2.PHP_EOL;
 
 
-$query2 = "CREATE TABLE IF NOT EXISTS user_login(
+$query2 = "CREATE TABLE IF NOT EXISTS ".$u_log."(
 	user_id INT PRIMARY KEY AUTO_INCREMENT,
 	f_name VARCHAR(255) NOT NULL,
 	l_name VARCHAR(255) NOT NULL,
@@ -49,13 +52,13 @@ $query2 = "CREATE TABLE IF NOT EXISTS user_login(
 	password VARCHAR(255) NOT NULL,
 	created_at INT(11) NOT NULL
 	)";
-if ( $mydb->query($query2)== TRUE){
-	echo "table created succesfully\n";
+if ( $mysqli->query($query2)== TRUE){
+	echo "table: ".$u_log." created succesfully\n";
 } else {
-	echo "Error: " . $mydb->error;
+	echo "Error: " . $mysqli->error;
 }
 
-$query3 = "CREATE TABLE IF NOT EXISTS sessions (
+$query3 = "CREATE TABLE IF NOT EXISTS ".$sesh." (
 	session_id INT PRIMARY KEY AUTO_INCREMENT,
 	user_id INT NOT NULL,  
     	session_data TEXT, 
@@ -63,27 +66,26 @@ $query3 = "CREATE TABLE IF NOT EXISTS sessions (
 	session_expires INT(11),
    	FOREIGN KEY (user_id) REFERENCES user_login(user_id) ON DELETE CASCADE
     )";
-if ( $mydb->query($query3)== TRUE){
-        echo "table created succesfully\n";
+if ( $mysqli->query($query3)== TRUE){
+        echo "table: ".$sesh." created succesfully\n";
 } else {
-        echo "Error: " . $mydb->error;
+        echo "Error: " . $mysqli->error;
 }
 
-$t_api_table = 'api_teams';
-$p_api_table = 'api_players';
+
 
 
 $query4 = "CREATE TABLE IF NOT EXISTS ".$t_api_table." (
 	team_id INT PRIMARY KEY AUTO_INCREMENT,
-	team_name VARCHAR(255) NULL UNIQUE,
-	team_id_api INT NOT NULL,
+	team_name VARCHAR(255) UNIQUE,
+	team_id_api INT,
 	stadium VARCHAR(255),
 	league VARCHAR(255)
     )";
-if ( $mydb->query($query4)== TRUE){
+if ( $mysqli->query($query4)== TRUE){
         echo "table: ".$t_api_table." created succesfully\n";
 } else {
-        echo "Error: " . $mydb->error;
+        echo "Error: " . $mysqli->error;
 }
 
 $query5 = "CREATE TABLE IF NOT EXISTS ".$p_api_table." (
@@ -96,12 +98,25 @@ $query5 = "CREATE TABLE IF NOT EXISTS ".$p_api_table." (
 	pass_percent INT,
 	clean_sheets INT,
 	point_earned INT)";
-if ( $mydb->query($query5)== TRUE){
+if ( $mysqli->query($query5)== TRUE){
         echo "table: ".$p_api_table." created succesfully\n";
 } else {
-        echo "Error: " . $mydb->error;
+        echo "Error: " . $mysqli->error;
 }
 
+$query6 = "CREATE TABLE IF NOT EXISTS ".$l_nme." (
+	league_id INT PRIMARY KEY AUTO_INCREMENT,
+	league_name VARCHAR(255) NOT NULL UNIQUE,
+	league_password_hash VARCHAR(255),
+	league_owner VARCHAR(255) UNIQUE,
+	owner_id INT,
+	FOREIGN KEY (owner_id) REFERENCES user_login(user_id) ON DELETE CASCADE
+	)";
+if ($mysqli->query($query6) == TRUE){
+	echo "table: ".$l_nme." created succesfully\n";
+} else {
+	echo "Error: " . $mysqli->error;
+}
 
-$mydb->close();
+$mysqli->close();
 ?>
