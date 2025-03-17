@@ -39,7 +39,7 @@ function doLogin($uname, $passwd, $sesStart) {
         return array("returnCode" => '0', 'message' => "Invalid username");
     }
 }
-
+/*
 <<<<<<< HEAD
 function do twoFactor($rand_num){
 	$rand = rand(100000,999999);
@@ -69,7 +69,7 @@ function do twoFactor($rand_num){
 	}
 }
 
-=======
+=======*/
 function doTwoFactor($numID, $userCode, $randCode)
 {
     $mysqli = require __DIR__ . "/database.php";
@@ -100,7 +100,7 @@ function doTwoFactor($numID, $userCode, $randCode)
         return array("returnCode" => "0", "message" => "Two-factor authentication failed");
     }
 }
->>>>>>> 41914dbc85e6a861684640af01d5ad881b5b6bd0
+
 
 function doRegister($fname, $lname, $email, $uname, $passwd)
 {
