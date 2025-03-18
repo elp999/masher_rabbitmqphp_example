@@ -39,62 +39,46 @@ function doLogin($uname, $passwd, $sesStart) {
         return array("returnCode" => '0', 'message' => "Invalid username");
     }
 }
-/*
-<<<<<<< HEAD
-function do twoFactor($rand_num){
-	$rand = rand(100000,999999);
-	$mysqli = require __DIR__ . "/database.php";
-	$sql = "INSERT INTO 2fa (rand_num) VALUES (?)";
-	$stmt1 = $mysqli->stmt_init();
-	if ($stmt1->prepare($sql)){
-		$stmt1->bind_param("i", $rand);
-		$stmt1->execute();
-		if (!$stmt1->prepare($sql)){
-			return array("returncode" => "0", "message" => 'Sql insertion error');
-		}
-	}
-    	$sql = "SELECT rand_num FROM 2fa WHERE num_id = ?";
-   	$stmt2 = $mysqli->prepare($sql);
-    	$stmt2->bind_param("i", $rand_num);
-    	$stmt2->execute();
-    	$result = $stmt2->get_result();
-	if(!$result){
-		return array("returncode" => "0", "message" => 'Error fetching result.');
-	}
-	if ($tfa = $result->fetch_assoc()){
-		$righttfa = $tfa['rand_num'];
-		return array("returncode" => "1", "message" => 'User matched random number');
-	} else {	
-		return array("returncode" => "0", "message" => 'Did not match random number');
-	}
-}
-
-=======*/
 function doTwoFactor($numID, $userCode, $randCode)
+
 {
     $mysqli = require __DIR__ . "/database.php";
-    $sql = "INSERT INTO 2fa (num_id, rand_num) VALUES (?, ?)";
+
+    $sql = "INSERT INTO 2fa (rand_num) VALUES (?)";
     $stmt = $mysqli->stmt_init();
     if (!$stmt->prepare($sql)) {
         return array("returnCode" => "0", "message" => "stmt prepare issue");
     }
-    $stmt->bind_param("ii", $numID, $randCode);
+    $stmt->bind_param("i", $randCode);
     if (!$stmt->execute()) {
         return array("returnCode" => "0", "message" => "Insert failed");
     }
-    $sql1 = "SELECT rand_num FROM 2fa WHERE num_id = ? ORDER BY id DESC LIMIT 1";
+
+    $sql1 = "SELECT num_id, rand_num FROM 2fa WHERE rand_num = ? ORDER BY id DESC LIMIT 1";
     $stmt1 = $mysqli->stmt_init();
     if (!$stmt1->prepare($sql1)) {
         return array("returnCode" => "0", "message" => "stmt prepare issue");
     }
-    $stmt1->bind_param("i", $numID);
+    $stmt1->bind_param("i", $randCode);
     if (!$stmt1->execute()) {
         return array("returnCode" => "0", "message" => "Select failed");
     }
-    $stmt1->bind_result($retrievedRandNum);
+    $stmt1->bind_result($numId, $retrievedRandNum);
     $stmt1->fetch();
     $stmt1->close();
+
     if ($retrievedRandNum === $randCode) {
+        $delSQL = "DELETE FROM 2fa WHERE num_id = ?";
+        $stmt2 = $mysqli->stmt_init();
+        if (!$stmt2->prepare($delSQL)) {
+            return array("returnCode" => "0", "message" => "stmt prepare issue during delete");
+        }
+        $stmt2->bind_param("i", $numId);
+        if (!$stmt2->execute()) {
+            return array("returnCode" => "0", "message" => "Delete failed");
+        }
+        $stmt2->close();
+
         return array("returnCode" => "1", "message" => "Two-factor authentication successful");
     } else {
         return array("returnCode" => "0", "message" => "Two-factor authentication failed");
@@ -290,7 +274,7 @@ function createTeam($userID, $name)
 {
 
 	$mysqli = require __DIR__ . "/database.php";
-	$sql = "INSERT INTO teams (user_id, team_name) VALUES (?, ?)";
+	$sql = "INSERT INTO team_players (user_id, team_name) VALUES (?, ?)";
 
 	$stmt = $mysqli->stmt_init();
 
@@ -305,6 +289,27 @@ function createTeam($userID, $name)
 	    return array("returnCode" => "0");
         }	    
 }
+
+function createLeague($leagueName, $passwd, $ownerName, $ownerID)
+{
+	$passhash = password_hash($passwd, PASSWORD_DEFAULT);
+	$mysqli = require __DIR__ . "/database.php";
+	$sql = 'INSERT INTO league_name (league_name, league_password_hash, league_owner, owner_id)
+				 VALUES (?, ?, ?, ?)';
+	$stmt = $mysqli->stmt_init();
+	if (!$stmt->prepare($sql)) {
+            return array("returnCode" => "0", "message" => 'stmt error');
+        }
+	$stmt->bind_param("sssi", $leagueName, $passhash, $ownerName, $ownerID);
+        if ($stmt->execute()) {
+            return array("returnCode" => "1");
+        } else {
+            return array("returnCode" => "0");
+        }
+
+
+}
+
 
 function requestProcessor($request)
 {
@@ -321,8 +326,8 @@ function requestProcessor($request)
     case "validate_session":
 	    return doValidate($request['user_id']);
     case "register":
-      return doRegister($request['f_name'], $request['l_name'], $request['email'], 
-	                $request['username'], $request['password']);
+            return doRegister($request['f_name'], $request['l_name'], $request['email'], 
+	                      $request['username'], $request['password']);
     case "APIplayers":
 	    return doPlayers($request['players']);
     case "APIteams":
@@ -337,6 +342,11 @@ function requestProcessor($request)
 	    return createTeam($request['user_id'], $request['team_name']);
     case "twoFA":
 	    return doTwoFactor($request['num_id'], $request['userCode'], $request['randCode']);
+    case "create_league":
+	    return createLeague($request['league_name'], $request['league_password'],
+		                $request['league_owner'], $request['owner_id']);
+    case "logout":
+	    return doLogout($request['user_id']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
