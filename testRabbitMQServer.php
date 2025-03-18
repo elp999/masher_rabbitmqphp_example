@@ -3,7 +3,6 @@
 require_once('path.inc');
 require_once('get_host_info.inc');
 require_once('rabbitMQLib.inc');
-
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Dotenv\Dotenv;
@@ -40,8 +39,8 @@ function doLogin($uname, $passwd, $sesStart) {
         return array("returnCode" => '0', 'message' => "Invalid username");
     }
 }
+function doTwoFactor($numID, $userCode, $randCode)
 
-function doTwoFactor($userCode, $randCode)
 {
     $mysqli = require __DIR__ . "/database.php";
 
@@ -85,6 +84,7 @@ function doTwoFactor($userCode, $randCode)
         return array("returnCode" => "0", "message" => "Two-factor authentication failed");
     }
 }
+
 
 function doRegister($fname, $lname, $email, $uname, $passwd)
 {
