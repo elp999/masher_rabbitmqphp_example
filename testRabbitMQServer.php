@@ -91,68 +91,67 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
    $passhash = password_hash($passwd, PASSWORD_DEFAULT);	
    $mysqli = require __DIR__ . "/database.php";
 
-
-
    $sql = "SELECT username FROM user_login WHERE username = ?";
-   $stmt1 = $mysqli->stmt_init();
-   if ($stmt1->prepare($sql)){
-	   $stmt1->bind_param("s", $uname);
-	   $stmt1->execute();
-	   $stmt1->store_result();
-
-	   if ($stmt1->num_rows > 0){
-		   return array("returncode" => "0", "message" => 'Username exists');
-	   }
-   } else {		   
-	   return array("returncode" => "0", "message" => 'Error preparing statement.');
-   }
-   $sql = "INSERT INTO user_login (f_name, l_name, email, username, password, created_at)
-		   VALUES (?, ?, ?, ?, ?, ?)";	   
-   $stmt1 = $mysqli->stmt_init();	   
-   if (!$stmt1->prepare($sql)) {   	   
-	   return array("returnCode" => "0", "message" => 'statement prepare error');	   
-   }
-   $ran = rand(100000,999999);  
-   $sql = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")";
    $stmt = $mysqli->stmt_init();
-   if (!$stmt->prepare($sql)){
-	   return array("returnCode" => "0", "message" => 'statement prepare error');
+   if ($stmt->prepare($sql)){
+       $stmt->bind_param("s", $uname);
+       $stmt->execute();
+       $stmt->store_result();
+
+       if ($stmt->num_rows > 0) {
+	   return array("returncode" => "0", "message" => 'Username exists');
+       }
+   } else {		   
+	return array("returncode" => "0", "message" => 'Error preparing statement.');
+   }
+
+
+   $sql1 = "INSERT INTO user_login (f_name, l_name, email, username, password, created_at)
+		            VALUES (?, ?, ?, ?, ?, ?)";	   
+   $stmt1 = $mysqli->stmt_init();	   
+   if (!$stmt1->prepare($sql1)) {   	   
+       return array("returnCode" => "0", "message" => 'statement prepare error');	   
+   }
+
+   $ran = rand(100000,999999);  
+   $tfasql = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")";
+   $stmt2 = $mysqli->stmt_init();
+
+   if (!$stmt2->prepare($tfasql)){
+       return array("returnCode" => "0", "message" => 'statement prepare error');
    } 
    if (!$stmt2->execute()) {
-	   return array("returnCode" => "0", "message" => "Delete failed");        
+       return array("returnCode" => "0", "message" => "2fa insertion failed");        
    }
 
+
    $d = time();	   
-   $stmt->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
-   if ($stmt->execute()) {		   
-	   $mail = new PHPMailer(true);	   
-	   try {			  
-		   $mail->isSMTP();    			   
-		   $mail->Host       = $_ENV['SMTP_HOST'];    			   
-		   $mail->SMTPAuth   = true; 		       	   
-		   $mail->Username   = $_ENV['SMTP_USER'];    			   
-		   $mail->Password   = $_ENV['SMTP_PASS'];    			   
-		   $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    			   
-		   $mail->Port       = $_ENV['SMTP_PORT'];    			   
-		   $mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);    			   
-		   $mail->addAddress($email, $fname);    			   
-		   $mail->isHTML(true);    	 		   
-		   $mail->Subject = 'Test Email';			   
-		   $mail->Body    = '<h1>Hello!</h1>	
-			<p>Two Factor Code Below</>
-			<p>'.$ran.'</>			
-			   <p>registration success</p>';			   
-		   $mail->send();			   
-		   echo 'Email sent successfully!';		   
-	   } catch (Exception $e) {			   
-		   echo "Error: {$mail->ErrorInfo}";		   
-	   }		   
-	   return array ("returnCode" => "1", "message" => 'success');	   
+   $stmt1->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
+   if ($stmt1->execute()) {		   
+       $mail = new PHPMailer(true);	   
+       try {			  
+	$mail->isSMTP();    			   
+	$mail->Host       = $_ENV['SMTP_HOST'];    			   
+	$mail->SMTPAuth   = true; 		       	   
+	$mail->Username   = $_ENV['SMTP_USER'];    			   
+	$mail->Password   = $_ENV['SMTP_PASS'];    			   
+	$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    			   
+	$mail->Port       = $_ENV['SMTP_PORT'];    			   
+	$mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);    			   
+	$mail->addAddress($email, $fname);    			   
+	$mail->isHTML(true);    	 		   
+	$mail->Subject = 'Test Email';			   
+	$mail->Body    = '<h1>Hello!</h1><p>Two Factor Code Below</><p>'.$ran.'</> <p>registration success</p>';		$mail->send();			   
+	echo 'Email sent successfully!';		   
+     } catch (Exception $e) {			   
+	echo "Error: {$mail->ErrorInfo}";		   
+     }		   
+       return array ("returnCode" => "1", "message" => 'success');
    } else {		   
-	   if ($mysqli->errno === 1062) {			   
-		   return array ("returnCode" => "0", 'message' => "email taken");		   
-	   } else {			   
-		   return array ("returnCode" => "0", 'message' => "other error");		   
+	if ($mysqli->errno === 1062) {			   
+            return array ("returnCode" => "0", 'message' => "email taken");		   
+      } else {			   
+            return array ("returnCode" => "0", 'message' => "other error");		   
 	   }	   
    }   
 }
