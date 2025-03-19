@@ -111,7 +111,9 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
    $stmt = $mysqli->stmt_init();	   
    if (!$stmt->prepare($sql)) {   	   
 	   return array("returnCode" => "0", "message" => 'statement prepare error');	   
-   }	   
+   }
+   $ran = rand(100000,999999);  
+   $sqo = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")"; 
    $d = time();	   
    $stmt->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
    if ($stmt->execute()) {		   
@@ -128,7 +130,9 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
 		   $mail->addAddress($email, $fname);    			   
 		   $mail->isHTML(true);    	 		   
 		   $mail->Subject = 'Test Email';			   
-		   $mail->Body    = '<h1>Hello!</h1>				   
+		   $mail->Body    = '<h1>Hello!</h1>	
+			<p>Two Factor Code Below</>
+			<p>'.$ran.'</>			
 			   <p>registration success</p>';			   
 		   $mail->send();			   
 		   echo 'Email sent successfully!';		   

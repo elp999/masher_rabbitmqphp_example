@@ -63,7 +63,9 @@ $query3 = "CREATE TABLE IF NOT EXISTS ".$l_nme." (
         league_name VARCHAR(255) NOT NULL UNIQUE,
         league_password_hash VARCHAR(255),
         league_owner VARCHAR(255) UNIQUE,
-        owner_id INT,
+	owner_id INT,
+	league_players VARCHAR(255),
+	FOREIGN KEY (league_players) REFERENCES user_login(user_id) ON DELETE CASCADE,
         FOREIGN KEY (owner_id) REFERENCES user_login(user_id) ON DELETE CASCADE
         )";
 if ($mysqli->query($query3) == TRUE){
