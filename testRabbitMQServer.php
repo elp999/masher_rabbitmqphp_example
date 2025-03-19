@@ -39,41 +39,31 @@ function doLogin($uname, $passwd, $sesStart) {
         return array("returnCode" => '0', 'message' => "Invalid username");
     }
 }
-function doTwoFactor($numID, $userCode, $randCode)
+function doTwoFactor($randCode)
 
 {
     $mysqli = require __DIR__ . "/database.php";
-
-    $sql = "INSERT INTO 2fa (rand_num) VALUES (?)";
+    
+    $sql = "SELECT rand_num FROM 2fa WHERE rand_num = ? ORDER BY id DESC LIMIT 1";
     $stmt = $mysqli->stmt_init();
     if (!$stmt->prepare($sql)) {
         return array("returnCode" => "0", "message" => "stmt prepare issue");
     }
     $stmt->bind_param("i", $randCode);
     if (!$stmt->execute()) {
-        return array("returnCode" => "0", "message" => "Insert failed");
-    }
-
-    $sql1 = "SELECT num_id, rand_num FROM 2fa WHERE rand_num = ? ORDER BY id DESC LIMIT 1";
-    $stmt1 = $mysqli->stmt_init();
-    if (!$stmt1->prepare($sql1)) {
-        return array("returnCode" => "0", "message" => "stmt prepare issue");
-    }
-    $stmt1->bind_param("i", $randCode);
-    if (!$stmt1->execute()) {
         return array("returnCode" => "0", "message" => "Select failed");
     }
-    $stmt1->bind_result($numId, $retrievedRandNum);
-    $stmt1->fetch();
-    $stmt1->close();
+    $stmt->bind_result($retrievedRandNum);
+    $stmt->fetch();
+    $stmt->close();
 
     if ($retrievedRandNum === $randCode) {
-        $delSQL = "DELETE FROM 2fa WHERE num_id = ?";
+        $delSQL = "DELETE FROM 2fa WHERE rand_num = ?";
         $stmt2 = $mysqli->stmt_init();
         if (!$stmt2->prepare($delSQL)) {
             return array("returnCode" => "0", "message" => "stmt prepare issue during delete");
         }
-        $stmt2->bind_param("i", $numId);
+        $stmt2->bind_param("i", $randCode);
         if (!$stmt2->execute()) {
             return array("returnCode" => "0", "message" => "Delete failed");
         }
@@ -352,7 +342,7 @@ function requestProcessor($request)
     case "create_team":
 	    return createTeam($request['user_id'], $request['team_name']);
     case "twoFA":
-	    return doTwoFactor($request['num_id'], $request['userCode'], $request['randCode']);
+	    return doTwoFactor($request['randCode']);
     case "create_league":
 	    return createLeague($request['league_name'], $request['league_password'],
 		                $request['league_owner'], $request['owner_id']);
