@@ -108,12 +108,20 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
    }
    $sql = "INSERT INTO user_login (f_name, l_name, email, username, password, created_at)
 		   VALUES (?, ?, ?, ?, ?, ?)";	   
-   $stmt = $mysqli->stmt_init();	   
-   if (!$stmt->prepare($sql)) {   	   
+   $stmt1 = $mysqli->stmt_init();	   
+   if (!$stmt1->prepare($sql)) {   	   
 	   return array("returnCode" => "0", "message" => 'statement prepare error');	   
    }
    $ran = rand(100000,999999);  
-   $sqo = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")"; 
+   $sql = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")";
+   $stmt = $mysqli->stmt_init();
+   if (!$stmt->prepare($sql)){
+	   return array("returnCode" => "0", "message" => 'statement prepare error');
+   } 
+   if (!$stmt2->execute()) {
+	   return array("returnCode" => "0", "message" => "Delete failed");        
+   }
+
    $d = time();	   
    $stmt->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
    if ($stmt->execute()) {		   
