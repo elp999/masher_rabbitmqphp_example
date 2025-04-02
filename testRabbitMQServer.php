@@ -8,9 +8,21 @@ use PHPMailer\PHPMailer\Exception;
 use Dotenv\Dotenv;
 
 require 'vendor/autoload.php';
+use Twilio\Rest\Client;
 
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
+
+function sendSMS($phoneNum)
+{
+
+$sid = $_ENV('TWILIO_SID');
+$token = $_ENV('TWILIO_TOKEN');
+$twilio = new Client($sid, $token);
+$verification = $twilio->verify->v2->services($_ENV('TWILIO_SERVICES'))
+				   ->verifications
+				   ->create("+" . $phoneNum, "sms");
+}
 
 
 function doLogin($uname, $passwd, $sesStart) {
