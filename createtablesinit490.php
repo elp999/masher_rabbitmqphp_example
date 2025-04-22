@@ -66,7 +66,6 @@ $query3 = "CREATE TABLE IF NOT EXISTS ".$l_nme." (
         league_owner VARCHAR(255) UNIQUE,
 	owner_id INT,
 	league_players VARCHAR(255),
-	FOREIGN KEY (league_players) REFERENCES user_login(user_id) ON DELETE CASCADE,
         FOREIGN KEY (owner_id) REFERENCES user_login(user_id) ON DELETE CASCADE
         )";
 if ($mysqli->query($query3) == TRUE){
@@ -147,7 +146,7 @@ if ( $mysqli->query($query8)== TRUE){
 } else {
         echo "Error: " . $mysqli->error;
 }
-
+/*
 $query9 = "CREATE TABLE IF NOT EXISTS 2fa (
         num_id INT PRIMARY KEY AUTO_INCREMENT,
 	rand_num INT    
@@ -157,7 +156,7 @@ if ( $mysqli->query($query9)== TRUE){
 } else {
         echo "Error: " . $mysqli->error;
 }
-
+ */
 
 $mysqli->close();
 ?>
