@@ -16,10 +16,11 @@ $dotenv->load();
 function sendSMS($phoneNum)
 {
 
-$sid = $_ENV('TWILIO_SID');
-$token = $_ENV('TWILIO_TOKEN');
+$sid = $_ENV['TWILIO_SID'];
+$token = $_ENV['TWILIO_TOKEN'];
+$services = $_ENV['TWILIO_SERVICES'];
 $twilio = new Client($sid, $token);
-$verification = $twilio->verify->v2->services($_ENV('TWILIO_SERVICES'))
+$verification = $twilio->verify->v2->services($services)
 				   ->verifications
 				   ->create("+" . $phoneNum, "sms");
 }
@@ -88,7 +89,7 @@ function doTwoFactor($randCode)
 }
 
 
-function doRegister($fname, $lname, $email, $uname, $passwd)
+function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
 {
    $passhash = password_hash($passwd, PASSWORD_DEFAULT);	
    $mysqli = require __DIR__ . "/database.php";
@@ -108,8 +109,8 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
    }
 
 
-   $sql1 = "INSERT INTO user_login (f_name, l_name, email, username, password, created_at)
-		            VALUES (?, ?, ?, ?, ?, ?)";	   
+   $sql1 = "INSERT INTO user_login (f_name, l_name, phone, email, username, password, created_at)
+		            VALUES (?, ?, ?, ?, ?, ?, ?)";	   
    $stmt1 = $mysqli->stmt_init();	   
    if (!$stmt1->prepare($sql1)) {   	   
        return array("returnCode" => "0", "message" => 'statement prepare error');	   
@@ -128,7 +129,7 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
 
 
    $d = time();	   
-   $stmt1->bind_param("sssssi", $fname, $lname, $email, $uname, $passhash, $d);
+   $stmt1->bind_param("ssssssi", $fname, $lname, $phone, $email, $uname, $passhash, $d);
    if ($stmt1->execute()) {		   
        $mail = new PHPMailer(true);	   
        try {			  
@@ -143,7 +144,7 @@ function doRegister($fname, $lname, $email, $uname, $passwd)
 	$mail->addAddress($email, $fname);    			   
 	$mail->isHTML(true);    	 		   
 	$mail->Subject = 'Test Email';			   
-	$mail->Body    = '<h1>Hello!</h1><p>Two Factor Code Below</><p>'.$ran.'</> <p>registration success</p>';		$mail->send();			   
+	$mail->Body    = '<h1>Hello!</h1><p>Welcome!!</><p>'.$ran.'</> <p>registration success</p>';	$mail->send();			   
 	echo 'Email sent successfully!';		   
      } catch (Exception $e) {			   
 	echo "Error: {$mail->ErrorInfo}";		   
@@ -340,7 +341,7 @@ function requestProcessor($request)
 	    return doValidate($request['user_id']);
     case "register":
             return doRegister($request['f_name'], $request['l_name'], $request['email'], 
-	                      $request['username'], $request['password']);
+	                      $request['username'], $request['password'], $request['phone']);
     case "APIplayers":
 	    return doPlayers($request['players']);
     case "APIteams":
