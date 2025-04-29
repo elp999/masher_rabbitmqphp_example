@@ -135,7 +135,7 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
        return array("returnCode" => "0", "message" => 'statement prepare error');	   
    }
 
-   if ($stmt1->execute()) {
+//   if ($stmt1->execute()) {
    
        $d = time();	   
        $stmt1->bind_param("ssssssi", $fname, $lname, $phone, $email, $uname, $passhash, $d);
@@ -169,7 +169,8 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
                     return array ("returnCode" => "0", 'message' => "other error");		   
 	        }	   
         }   
-}
+   }
+
 function doPlayers($APIplayers)
 {
 
