@@ -22,7 +22,23 @@ $services = $_ENV['TWILIO_SERVICES'];
 $twilio = new Client($sid, $token);
 $verification = $twilio->verify->v2->services($services)
 				   ->verifications
-				   ->create("+" . $phoneNum, "sms");
+				   ->create("+1" . $phoneNum, "sms");
+}
+
+
+function verifyTFA($code, $phone)
+{
+	
+$sid = $_ENV['TWILIO_SID'];
+$token = $_ENV['TWILIO_TOKEN'];
+$services = $_ENV["TWILIO_SERVICES"];
+
+$twilio = new Client($sid, $token);
+$verification = $twilio->verify->v2->services($services)
+                                   ->verificationChecks
+                                   ->create([ "to" => "+1". $phone,
+                                              "code" => $code]);
+
 }
 
 
@@ -94,6 +110,8 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
    $passhash = password_hash($passwd, PASSWORD_DEFAULT);	
    $mysqli = require __DIR__ . "/database.php";
 
+   // STMT 1 // CHECKS EXISTING USER
+   
    $sql = "SELECT username FROM user_login WHERE username = ?";
    $stmt = $mysqli->stmt_init();
    if ($stmt->prepare($sql)){
@@ -108,55 +126,49 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
 	return array("returncode" => "0", "message" => 'Error preparing statement.');
    }
 
-
+   // STMT 2 // INSERTING INTO USERS TABLE
+   
    $sql1 = "INSERT INTO user_login (f_name, l_name, phone, email, username, password, created_at)
-		            VALUES (?, ?, ?, ?, ?, ?, ?)";	   
+	    VALUES (?, ?, ?, ?, ?, ?, ?)";	   
    $stmt1 = $mysqli->stmt_init();	   
    if (!$stmt1->prepare($sql1)) {   	   
        return array("returnCode" => "0", "message" => 'statement prepare error');	   
    }
 
-   $ran = rand(100000,999999);  
-   $tfasql = "INSERT INTO 2fa (rand_num) VALUES (".$ran.")";
-   $stmt2 = $mysqli->stmt_init();
-
-   if (!$stmt2->prepare($tfasql)){
-       return array("returnCode" => "0", "message" => 'statement prepare error');
-   } 
-   if (!$stmt2->execute()) {
-       return array("returnCode" => "0", "message" => "2fa insertion failed");        
-   }
-
-
-   $d = time();	   
-   $stmt1->bind_param("ssssssi", $fname, $lname, $phone, $email, $uname, $passhash, $d);
-   if ($stmt1->execute()) {		   
-       $mail = new PHPMailer(true);	   
-       try {			  
-	$mail->isSMTP();    			   
-	$mail->Host       = $_ENV['SMTP_HOST'];    			   
-	$mail->SMTPAuth   = true; 		       	   
-	$mail->Username   = $_ENV['SMTP_USER'];    			   
-	$mail->Password   = $_ENV['SMTP_PASS'];    			   
-	$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    			   
-	$mail->Port       = $_ENV['SMTP_PORT'];    			   
-	$mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);    			   
-	$mail->addAddress($email, $fname);    			   
-	$mail->isHTML(true);    	 		   
-	$mail->Subject = 'Test Email';			   
-	$mail->Body    = '<h1>Hello!</h1><p>Welcome!!</><p>'.$ran.'</> <p>registration success</p>';	$mail->send();			   
-	echo 'Email sent successfully!';		   
-     } catch (Exception $e) {			   
-	echo "Error: {$mail->ErrorInfo}";		   
-     }		   
-       return array ("returnCode" => "1", "message" => 'success');
-   } else {		   
-	if ($mysqli->errno === 1062) {			   
-            return array ("returnCode" => "0", 'message' => "email taken");		   
-      } else {			   
-            return array ("returnCode" => "0", 'message' => "other error");		   
-	   }	   
-   }   
+   if ($stmt1->execute()) {
+   
+       $d = time();	   
+       $stmt1->bind_param("ssssssi", $fname, $lname, $phone, $email, $uname, $passhash, $d);
+       if ($stmt1->execute()) {
+	   // SENDS EMAIL //		       
+           $mail = new PHPMailer(true);	   
+           try {			  
+	     $mail->isSMTP();    			   
+	     $mail->Host       = $_ENV['SMTP_HOST'];    			   
+	     $mail->SMTPAuth   = true; 		       	   
+	     $mail->Username   = $_ENV['SMTP_USER'];    			   
+	     $mail->Password   = $_ENV['SMTP_PASS'];    			   
+	     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    			   
+	     $mail->Port       = $_ENV['SMTP_PORT'];    			   
+	     $mail->setFrom($_ENV['SMTP_FROM_EMAIL'], $_ENV['SMTP_FROM_NAME']);    			   
+	     $mail->addAddress($email, $fname);    			   
+	     $mail->isHTML(true);    	 		   
+	     $mail->Subject = 'Test Email';			   
+	     $mail->Body    = '<h1>Hello!</h1><p>Welcome!!</><p> <p>registration success</p>';	$mail->send();			   
+	     echo 'Email sent successfully!';		   
+            } catch (Exception $e) {			   
+	        echo "Error: {$mail->ErrorInfo}";		   
+	    }		   
+ 	   // SENDS EMAIL //	
+	     sendSMS($phone);	
+             return array ("returnCode" => "1", "message" => 'success', "phone" => $phone);
+        } else {		   
+	        if ($mysqli->errno === 1062) {			   
+                    return array ("returnCode" => "0", 'message' => "email taken");		   
+                } else {			   
+                    return array ("returnCode" => "0", 'message' => "other error");		   
+	        }	   
+        }   
 }
 function doPlayers($APIplayers)
 {
@@ -320,8 +332,6 @@ function createLeague($leagueName, $passwd, $ownerName, $ownerID)
         } else {
             return array("returnCode" => "0");
         }
-
-
 }
 
 
@@ -355,12 +365,14 @@ function requestProcessor($request)
     case "create_team":
 	    return createTeam($request['user_id'], $request['team_name']);
     case "twoFA":
-	    return doTwoFactor($request['randCode']);
+	    return sendSMS($request['phone']);
     case "create_league":
 	    return createLeague($request['league_name'], $request['league_password'],
 		                $request['league_owner'], $request['owner_id']);
     case "logout":
 	    return doLogout($request['user_id']);
+    case "verifytfa":
+	    return verifyTFA($request['code'], $request['phone']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
