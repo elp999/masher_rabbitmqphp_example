@@ -39,6 +39,11 @@ $verification = $twilio->verify->v2->services($services)
                                    ->create([ "to" => "+1". $phone,
                                               "code" => $code]);
 
+if ($verification->status === "approved") {
+        return array("returnCode" => "1", "message" => "Two-factor authentication successful");
+    } else {
+        return array("returnCode" => "0", "message" => "Two-factor authentication failed");
+    }
 }
 
 
