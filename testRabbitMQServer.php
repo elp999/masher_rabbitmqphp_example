@@ -398,7 +398,7 @@ function requestProcessor($request)
     case "verifytfa":
 	    return verifyTFA($request['code'], $request['phone']);
     case "create_league":
-	    return createLeague($request['lname'], $request['lpass'], $request['ownerName']);
+	    return createLeague($request['lname'], $request['lpass'], $request['ownerName'], $request['owner_id']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
