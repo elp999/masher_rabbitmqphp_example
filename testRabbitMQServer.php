@@ -339,6 +339,25 @@ function createLeague($leagueName, $passwd, $ownerName, $ownerID)
         }
 }
 
+function showLeagues()
+{
+
+   $mysqli = require __DIR__ . "/database.php";
+   $sql = "SELECT * FROM league_name";
+
+   $result = $mysqli->query($sql);
+     if (!$result) {
+         return array("returnCode" => "0", "message" => 'select failed');
+       }
+
+        $leagues = [];
+        while ($row = $result->fetch_assoc()) {
+            $leagues[] = $row;
+         }
+
+        return json_encode($leagues);
+}
+
 
 function requestProcessor($request)
 {
@@ -365,19 +384,20 @@ function requestProcessor($request)
 	    return getTeams();
     case "SelectPlayers":
 	    return getPlayers();
+    case "show_leagues":
+	    return showLeagues();
     case "logout":
 	    return doLogout($request['user_id']);
     case "create_team":
 	    return createTeam($request['user_id'], $request['team_name']);
     case "twoFA":
 	    return sendSMS($request['phone']);
-    case "create_league":
-	    return createLeague($request['league_name'], $request['league_password'],
-		                $request['league_owner'], $request['owner_id']);
     case "logout":
 	    return doLogout($request['user_id']);
     case "verifytfa":
 	    return verifyTFA($request['code'], $request['phone']);
+    case "create_league":
+	    return createLeague($request['lname'], $request['lpass'], $request['ownerName']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
