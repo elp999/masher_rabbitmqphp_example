@@ -140,7 +140,7 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
        return array("returnCode" => "0", "message" => 'statement prepare error');	   
    }
 
-   if ($stmt1->execute()) {
+//   if ($stmt1->execute()) {
    
        $d = time();	   
        $stmt1->bind_param("ssssssi", $fname, $lname, $phone, $email, $uname, $passhash, $d);
@@ -174,7 +174,8 @@ function doRegister($fname, $lname, $email, $uname, $passwd, $phone)
                     return array ("returnCode" => "0", 'message' => "other error");		   
 	        }	   
         }   
-}
+   }
+
 function doPlayers($APIplayers)
 {
 
@@ -397,7 +398,7 @@ function requestProcessor($request)
     case "verifytfa":
 	    return verifyTFA($request['code'], $request['phone']);
     case "create_league":
-	    return createLeague($request['lname'], $request['lpass'], $request['ownerName']);
+	    return createLeague($request['lname'], $request['lpass'], $request['ownerName'], $request['owner_id']);
   }
   return array("returnCode" => '0', 'message'=>"Server received request and processed");
 }
